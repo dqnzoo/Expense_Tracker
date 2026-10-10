@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SpendWise - A modern, responsive Expense Tracker Dashboard built with Vanilla JavaScript, Chart.js, and jsPDF. Track expenses, analyze categories, convert currencies, and export reports.">
+  <title>SpendWise — Expense Tracker Dashboard</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- jsPDF & AutoTable CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2.2'><path d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/><path d='M3 5v14a2 2 0 0 0 2 2h16v-5'/><path d='M18 12a2 2 0 0 0 0 4h4v-4Z'/></svg>">
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- App Wrapper -->
+  <div class="app-layout">
+    
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-container">
+        <div class="brand-group">
+          <div class="brand-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
+              <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
+              <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="brand-title">Cash-Flow</h1>
+            <p class="brand-subtitle">Salary & Expense Tracker Module &bull; Sprint 02</p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div class="badge-system-time" id="system-date-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span id="current-date-text">Loading date...</span>
+          </div>
+          <button id="theme-toggle-btn" class="btn btn-secondary btn-icon" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+            <span id="theme-icon">🌙</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+      <!-- Critical Threshold Alert Banner -->
+      <div id="threshold-alert-banner" class="threshold-alert-banner hidden" role="alert">
+        <div class="alert-icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="alert-content">
+          <strong>Critical Budget Alert:</strong> Your Remaining Balance has dropped below 10% of your Total Salary! Consider reducing upcoming expenses.
+        </div>
+      </div>
+
+      <!-- Salary & Income Input Panel -->
+      <section class="panel salary-panel" aria-label="Salary Setup">
+        <form id="salary-form" class="salary-form" novalidate>
+          <div class="salary-form-inner">
+            <div class="salary-icon-wrap-cell">
+              <div class="salary-icon-bubble">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                  <line x1="2" y1="10" x2="22" y2="10"></line>
+                </svg>
+              </div>
+            </div>
+
+            <div class="salary-field-group salary-currency-wrap">
+              <label for="app-currency-select" class="form-label">Currency</label>
+              <select id="app-currency-select" class="form-select app-currency-select" aria-label="Select Currency">
+                <option value="USD" selected>USD ($)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="JPY">JPY (¥)</option>
+                <option value="CAD">CAD (CA$)</option>
+                <option value="AUD">AUD (A$)</option>
+              </select>
+            </div>
+
+            <div class="salary-field-group salary-input-wrap">
+              <label for="total-salary-input" class="form-label">
+                Total Salary / Monthly Income <span class="required-star">*</span>
+              </label>
+              <div class="input-with-icon">
+                <span class="input-prefix" id="salary-currency-symbol">$</span>
+                <input 
+                  type="number" 
+                  id="total-salary-input" 
+                  class="form-input has-prefix" 
+                  placeholder="e.g. 5000.00" 
+                  step="0.01" 
+                  min="0.01" 
+                  required
+                >
+              </div>
+            </div>
+
+            <div class="salary-field-group salary-btn-wrap">
+              <button type="submit" id="set-salary-btn" class="btn btn-primary btn-salary-submit">
+                <span id="salary-btn-text">Set Salary</span>
+              </button>
+            </div>
+          </div>
+          <span class="field-error" id="salary-error"></span>
+        </form>
+      </section>
+
+      <!-- Summary KPI Cards Grid (Salary, Expenses, Remaining Balance, Count) -->
+      <section class="summary-grid" aria-label="Summary Statistics">
+        <!-- Card 1: Total Salary -->
+        <div class="metric-card card-salary">
+          <div class="metric-header">
+            <span class="metric-label">Total Salary</span>
+            <div class="metric-icon-wrap icon-blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                <line x1="2" y1="10" x2="22" y2="10"></line>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value" id="total-salary-value">$0.00</div>
+          <div class="metric-footnote" id="total-salary-subtext">Base Monthly Income</div>
+        </div>
+
+        <!-- Card 2: Total Expenses -->
+        <div class="metric-card card-total">
+          <div class="metric-header">
+            <span class="metric-label">Total Expenses</span>
+            <div class="metric-icon-wrap icon-purple">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value" id="total-expenses-value">$0.00</div>
+          <div class="metric-footnote" id="total-expenses-subtext">Sum of all tracked spending</div>
+        </div>
+
+        <!-- Card 3: Remaining Balance -->
+        <div class="metric-card card-balance">
+          <div class="metric-header">
+            <span class="metric-label">Remaining Balance</span>
+            <div class="metric-icon-wrap icon-emerald" id="balance-icon-wrap">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value" id="remaining-balance-value">$0.00</div>
+          <div class="metric-footnote" id="remaining-balance-subtext">Salary - Total Expenses</div>
+        </div>
+
+        <!-- Card 4: Expense Count -->
+        <div class="metric-card card-count">
+          <div class="metric-header">
+            <span class="metric-label">Total Records</span>
+            <div class="metric-icon-wrap icon-amber">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value" id="expense-count-value">0</div>
+          <div class="metric-footnote" id="expense-count-subtext">Transactions logged</div>
+        </div>
+      </section>
+
+      <!-- Middle Grid: Form & Visual Breakdown -->
+      <div class="dashboard-two-col">
+        
+        <!-- Form Section -->
+        <section class="panel form-panel" id="expense-form-panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="form-heading">Add New Expense</h2>
+              <p class="panel-subtitle">Record your transaction details</p>
+            </div>
+            <div id="editing-indicator" class="editing-tag hidden">
+              <span>Editing Record</span>
+            </div>
+          </div>
+
+          <form id="expense-form" class="expense-form" novalidate>
+            <input type="hidden" id="expense-id-input" value="">
+
+            <div class="form-group">
+              <label for="expense-title-input" class="form-label">
+                Expense Title / Description <span class="required-star">*</span>
+              </label>
+              <div class="input-with-icon">
+                <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+                <input 
+                  type="text" 
+                  id="expense-title-input" 
+                  class="form-input" 
+                  placeholder="e.g. Grocery shopping, Metro pass" 
+                  maxlength="60" 
+                  required
+                >
+              </div>
+              <span class="field-error" id="title-error"></span>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="expense-amount-input" class="form-label">
+                  Amount (<span id="expense-currency-symbol-label">$</span>) <span class="required-star">*</span>
+                </label>
+                <div class="input-with-icon">
+                  <span class="input-prefix" id="expense-currency-symbol">$</span>
+                  <input 
+                    type="number" 
+                    id="expense-amount-input" 
+                    class="form-input has-prefix" 
+                    placeholder="0.00" 
+                    step="0.01" 
+                    min="0.01" 
+                    required
+                  >
+                </div>
+                <span class="field-error" id="amount-error"></span>
+              </div>
+
+              <div class="form-group">
+                <label for="expense-category-input" class="form-label">
+                  Category <span class="required-star">*</span>
+                </label>
+                <select id="expense-category-input" class="form-select" required>
+                  <option value="" disabled selected>Select category</option>
+                  <option value="Food & Dining">🍔 Food & Dining</option>
+                  <option value="Transportation">🚗 Transportation</option>
+                  <option value="Utilities & Bills">💡 Utilities & Bills</option>
+                  <option value="Entertainment">🎬 Entertainment</option>
+                  <option value="Shopping">🛍️ Shopping</option>
+                  <option value="Healthcare">💊 Healthcare</option>
+                  <option value="Education">📚 Education</option>
+                  <option value="Housing & Rent">🏠 Housing & Rent</option>
+                  <option value="Other">📦 Other</option>
+                </select>
+                <span class="field-error" id="category-error"></span>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="expense-date-input" class="form-label">
+                  Date <span class="required-star">*</span>
+                </label>
+                <input 
+                  type="date" 
+                  id="expense-date-input" 
+                  class="form-input" 
+                  required
+                >
+                <span class="field-error" id="date-error"></span>
+              </div>
+
+              <div class="form-group">
+                <label for="expense-payment-input" class="form-label">
+                  Payment Method
+                </label>
+                <select id="expense-payment-input" class="form-select">
+                  <option value="Credit Card">💳 Credit Card</option>
+                  <option value="Debit Card">💳 Debit Card</option>
+                  <option value="UPI">📱 UPI / Mobile Pay</option>
+                  <option value="Cash">💵 Cash</option>
+                  <option value="Net Banking">🏦 Net Banking</option>
+                  <option value="Other">🪙 Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" id="submit-expense-btn" class="btn btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span id="submit-btn-text">Add Expense</span>
+              </button>
+              <button type="button" id="cancel-edit-btn" class="btn btn-secondary hidden">
+                Cancel Edit
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Pie Chart Section -->
+        <section class="panel chart-panel" aria-label="Visual Spending Distribution">
+          <div class="panel-header chart-panel-header">
+            <div>
+              <h2 class="panel-title" id="chart-main-title">Remaining Balance vs. Expenses</h2>
+              <p class="panel-subtitle" id="chart-main-subtitle">Cash-Flow visual distribution</p>
+            </div>
+            <div class="chart-controls-group">
+              <div class="chart-toggle-tabs" role="tablist">
+                <button type="button" id="chart-tab-balance" class="chart-tab-btn active" role="tab" aria-selected="true">Balance vs. Expenses</button>
+                <button type="button" id="chart-tab-category" class="chart-tab-btn" role="tab" aria-selected="false">By Category</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-container-wrapper">
+            <div id="chart-canvas-container" class="chart-canvas-container">
+              <canvas id="expenseChart" width="380" height="300" aria-label="Category Pie Chart" role="img"></canvas>
+            </div>
+            <!-- Empty state for Chart -->
+            <div id="chart-empty-state" class="chart-empty-state hidden">
+              <div class="empty-icon-bubble">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                  <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                </svg>
+              </div>
+              <p class="empty-title">No category data yet</p>
+              <p class="empty-desc">Add your first expense to see your category spending breakdown.</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Currency Converter Tool Section -->
+      <section class="panel converter-panel" aria-label="Live Currency Converter">
+        <div class="panel-header">
+          <div class="converter-header-title">
+            <div class="converter-badge-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="m16 8-8 8"></path>
+                <path d="M8 8h8v8"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 class="panel-title">Global Currency Converter</h2>
+              <p class="panel-subtitle">Real-time exchange rates powered by the Frankfurter API</p>
+            </div>
+          </div>
+          <button id="converter-use-total-btn" class="btn btn-ghost btn-sm" type="button" title="Convert your total expense amount">
+            ⚡ Use Total Expenses
+          </button>
+        </div>
+
+        <form id="currency-converter-form" class="converter-form" novalidate>
+          <div class="converter-controls-grid">
+            <div class="form-group">
+              <label for="converter-amount-input" class="form-label">Amount</label>
+              <input 
+                type="number" 
+                id="converter-amount-input" 
+                class="form-input" 
+                placeholder="100.00" 
+                step="0.01" 
+                min="0.01" 
+                value="100" 
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="converter-from-select" class="form-label">From Currency</label>
+              <select id="converter-from-select" class="form-select">
+                <option value="USD" selected>USD — US Dollar ($)</option>
+                <option value="EUR">EUR — Euro (€)</option>
+                <option value="GBP">GBP — British Pound (£)</option>
+                <option value="INR">INR — Indian Rupee (₹)</option>
+                <option value="JPY">JPY — Japanese Yen (¥)</option>
+                <option value="CAD">CAD — Canadian Dollar (CA$)</option>
+                <option value="AUD">AUD — Australian Dollar (A$)</option>
+                <option value="CHF">CHF — Swiss Franc (CHF)</option>
+                <option value="SGD">SGD — Singapore Dollar (SG$)</option>
+              </select>
+            </div>
+
+            <div class="converter-swap-wrapper">
+              <button type="button" id="converter-swap-btn" class="btn-swap" title="Swap currencies" aria-label="Swap Currencies">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8v12M17 20l4-4M17 20l-4-4"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="form-group">
+              <label for="converter-to-select" class="form-label">To Currency</label>
+              <select id="converter-to-select" class="form-select">
+                <option value="INR" selected>INR — Indian Rupee (₹)</option>
+                <option value="USD">USD — US Dollar ($)</option>
+                <option value="EUR">EUR — Euro (€)</option>
+                <option value="GBP">GBP — British Pound (£)</option>
+                <option value="JPY">JPY — Japanese Yen (¥)</option>
+                <option value="CAD">CAD — Canadian Dollar (CA$)</option>
+                <option value="AUD">AUD — Australian Dollar (A$)</option>
+                <option value="CHF">CHF — Swiss Franc (CHF)</option>
+                <option value="SGD">SGD — Singapore Dollar (SG$)</option>
+              </select>
+            </div>
+
+            <div class="converter-btn-wrap">
+              <button type="submit" id="convert-currency-btn" class="btn btn-primary btn-convert">
+                <span id="convert-btn-spinner" class="spinner hidden"></span>
+                <span id="convert-btn-text">Convert</span>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <!-- Converter Result Display Box -->
+        <div id="converter-result-box" class="converter-result-box">
+          <div class="result-placeholder">Enter an amount and click Convert to retrieve live exchange rates.</div>
+        </div>
+      </section>
+
+      <!-- Expense List & Table Section -->
+      <section class="panel table-panel" aria-label="Expense Transactions List">
+        <div class="panel-header table-panel-header">
+          <div>
+            <h2 class="panel-title">Expense Transactions</h2>
+            <p class="panel-subtitle">Review, search, filter, and manage your records</p>
+          </div>
+
+          <div class="table-actions-group">
+            <button id="export-pdf-btn" class="btn btn-accent" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              <span>Download Report (PDF)</span>
+            </button>
+            <button id="clear-all-btn" class="btn btn-danger-outline btn-sm" type="button" title="Clear all local expenses">
+              Clear All
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="table-toolbar">
+          <div class="search-input-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input 
+              type="text" 
+              id="search-expense-input" 
+              class="form-input search-input" 
+              placeholder="Search expenses by title..."
+            >
+          </div>
+
+          <div class="filter-controls">
+            <select id="filter-category-select" class="form-select filter-select" aria-label="Filter by category">
+              <option value="ALL">All Categories</option>
+              <option value="Food & Dining">Food & Dining</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Utilities & Bills">Utilities & Bills</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Education">Education</option>
+              <option value="Housing & Rent">Housing & Rent</option>
+              <option value="Other">Other</option>
+            </select>
+
+            <select id="sort-expense-select" class="form-select filter-select" aria-label="Sort expenses">
+              <option value="date-desc">Date: Newest First</option>
+              <option value="date-asc">Date: Oldest First</option>
+              <option value="amount-desc">Amount: Highest First</option>
+              <option value="amount-asc">Amount: Lowest First</option>
+              <option value="title-asc">Title: A to Z</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Responsive Table Container -->
+        <div class="table-container">
+          <table class="expense-table" id="expense-table">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Title</th>
+                <th scope="col">Category</th>
+                <th scope="col">Payment</th>
+                <th scope="col" class="text-right">Amount</th>
+                <th scope="col" class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expense-table-body">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+
+          <!-- Empty State Container -->
+          <div id="table-empty-state" class="table-empty-state hidden">
+            <div class="empty-icon-bubble">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                <line x1="6" y1="8" x2="10" y2="8"></line>
+                <line x1="6" y1="12" x2="18" y2="12"></line>
+                <line x1="6" y1="16" x2="14" y2="16"></line>
+              </svg>
+            </div>
+            <h3 class="empty-title" id="empty-state-title">No expenses found</h3>
+            <p class="empty-desc" id="empty-state-desc">You haven't logged any expenses yet. Fill out the form above to get started!</p>
+          </div>
+        </div>
+
+        <!-- Table Footer Info -->
+        <div class="table-footer-info">
+          <span id="filtered-count-text">Showing 0 of 0 expenses</span>
+          <span id="storage-status-text">💾 Saved in local browser storage</span>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-container">
+        <p class="footer-copy">
+          <strong>SpendWise</strong> &bull; Sprint 02 Expense Tracker &bull; 100% Client-Side Vanilla JavaScript Application.
+        </p>
+        <p class="footer-note">
+          Data is safely preserved in your browser's LocalStorage. No server storage or account required.
+        </p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Custom Script with defer -->
+  <script src="script.js" defer></script>
+</body>
+</html>
